@@ -1,8 +1,10 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Zap, Menu, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { signOut } from '@/lib/auth';
+import { toast } from 'sonner';
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,7 +13,9 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -22,6 +26,20 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      toast.success('Signed out successfully');
+      navigate('/login');
+    } catch (error) {
+      toast.error('Failed to sign out. Please try again.');
+    } finally {
+      setIsSigningOut(false);
+      setIsMobileMenuOpen(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -88,9 +106,10 @@ export default function Layout({ children }: LayoutProps) {
                 <Button 
                   variant="ghost" 
                   className="text-gray-600 hover:text-green-600"
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
                 >
-                  Sign Out
+                  {isSigningOut ? 'Signing out...' : 'Sign Out'}
                 </Button>
               )}
             </div>
@@ -139,12 +158,10 @@ export default function Layout({ children }: LayoutProps) {
                       <Button 
                         variant="ghost" 
                         className="w-full justify-start text-gray-600"
-                        onClick={() => {
-                          supabase.auth.signOut();
-                          setIsMobileMenuOpen(false);
-                        }}
+                        onClick={handleSignOut}
+                        disabled={isSigningOut}
                       >
-                        Sign Out
+                        {isSigningOut ? 'Signing out...' : 'Sign Out'}
                       </Button>
                     </div>
                   </>

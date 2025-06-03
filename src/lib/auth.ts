@@ -8,8 +8,14 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Error signing out:', error);
+    throw error;
+  }
 }
 
 export async function createProfile(userId: string, profileData: Partial<Profile>) {
