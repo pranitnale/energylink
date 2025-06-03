@@ -13,6 +13,13 @@ export async function signOut() {
 }
 
 export async function createProfile(userId: string, profileData: Partial<Profile>) {
+  // Get current session to ensure we're authenticated
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    throw new Error('No authenticated session');
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .insert([{ id: userId, ...profileData }])

@@ -21,17 +21,36 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const { data: { user }, error } = await supabase.auth.signUp({
+      // First sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
 
-      if (user) {
-        // Create a basic profile for the new user
-        await createProfile(user.id, {
-          full_name: user.email?.split('@')[0] || '',
+      if (!authData.user) {
+        throw new Error('User creation failed');
+      }
+
+      // Wait a moment for the session to be established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Get the session to ensure we're authenticated
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) throw sessionError;
+      
+      if (!session) {
+        toast.info('Please check your email for verification link.');
+        navigate('/login');
+        return;
+      }
+
+      // Now create the profile
+      try {
+        await createProfile(authData.user.id, {
+          full_name: authData.user.email?.split('@')[0] || '',
           primary_role: [],
           intent: [],
           tech_tags: [],
@@ -41,10 +60,15 @@ export default function Signup() {
 
         toast.success('Account created successfully! Please check your email for verification.');
         navigate('/profile');
+      } catch (profileError: any) {
+        console.error('Error creating profile:', profileError);
+        // If profile creation fails, we should clean up the auth user
+        await supabase.auth.signOut();
+        throw new Error('Failed to create profile. Please try again.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing up:', error);
-      toast.error('Failed to create account. Please try again.');
+      toast.error(error.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }
