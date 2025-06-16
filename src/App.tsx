@@ -10,6 +10,7 @@ import Signup from "./pages/Signup";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
 import ViewProfile from "./pages/ViewProfile";
+import SavedContacts from "./pages/SavedContacts";
 import NotFound from "./pages/NotFound";
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
@@ -66,6 +67,14 @@ const App = () => (
               element={
                 <PrivateRoute>
                   <ViewProfile />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/saved"
+              element={
+                <PrivateRoute>
+                  <SavedContacts />
                 </PrivateRoute>
               }
             />

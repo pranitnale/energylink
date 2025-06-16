@@ -11,6 +11,7 @@ import { SynergyScore } from '@/components/SynergyScore';
 import { toast } from 'sonner';
 import { API_CONFIG } from '@/lib/config';
 import { CircularProgress } from '@/components/CircularProgress';
+import { saveProfile, checkIfProfileSaved, deleteSavedProfile, checkMultipleProfilesSaved } from '@/lib/services/savedProfiles';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -35,6 +36,8 @@ export default function Search() {
   const [synergyScores, setSynergyScores] = usePersistedState<Record<string, SynergyScoreType>>('synergyScores', {});
   const [error, setError] = useState<string | null>(null);
   const [currentQueryId, setCurrentQueryId] = usePersistedState<string | null>('currentQueryId', null);
+  const [savedProfiles, setSavedProfiles] = useState<Record<string, boolean>>({});
+  const [isSavedStatusLoaded, setIsSavedStatusLoaded] = useState(false);
   const navigate = useNavigate();
 
   // Initial load - fetch all profiles in alphabetical order if no persisted state
@@ -43,6 +46,20 @@ export default function Search() {
       fetchProfiles();
     }
   }, []);
+
+  // Check saved status for all visible profiles
+  useEffect(() => {
+    const loadSavedStatuses = async () => {
+      if (!profiles.length || isSavedStatusLoaded) return;
+
+      const profileIds = profiles.map(p => p.id);
+      const savedMap = await checkMultipleProfilesSaved(profileIds);
+      setSavedProfiles(savedMap);
+      setIsSavedStatusLoaded(true);
+    };
+
+    loadSavedStatuses();
+  }, [profiles, isSavedStatusLoaded]);
 
   const fetchProfiles = async () => {
     try {
@@ -175,9 +192,44 @@ export default function Search() {
     navigate(`/profile/${profileId}`, {
       state: { 
         synergyScore: synergyScores[profileId],
-        fromSearch: true
+        fromSearch: !!currentQueryId
       }
     });
+  };
+
+  const handleSaveToggle = async (e: React.MouseEvent, profileId: string) => {
+    e.stopPropagation(); // Prevent profile card click event
+
+    if (!currentQueryId) {
+      toast.error('Cannot save profile without search context');
+      return;
+    }
+
+    const synergyScore = synergyScores[profileId];
+    if (!synergyScore) {
+      toast.error('Cannot save profile without synergy score');
+      return;
+    }
+
+    if (savedProfiles[profileId]) {
+      // Delete the saved profile
+      const success = await deleteSavedProfile(profileId);
+      if (success) {
+        setSavedProfiles(prev => ({ ...prev, [profileId]: false }));
+      }
+      return;
+    }
+
+    const result = await saveProfile({
+      candidateId: profileId,
+      queryId: currentQueryId,
+      snapshotScore: synergyScore.score,
+      snapshotRationale: synergyScore.explanation,
+    });
+
+    if (result) {
+      setSavedProfiles(prev => ({ ...prev, [profileId]: true }));
+    }
   };
 
   const renderProfileCards = () => {
@@ -288,12 +340,26 @@ export default function Search() {
 
             <div className="flex items-center justify-end pt-5 border-t border-gray-100">
               <div className="flex space-x-3">
-                <Button variant="outline" size="sm" className="text-sm px-4 py-2">
-                  Save
-                </Button>
-                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2">
-                  Start Chat
-                </Button>
+                {currentQueryId && (
+                  <>
+                    <Button 
+                      variant={savedProfiles[profile.id] ? "default" : "outline"}
+                      size="sm" 
+                      className={`text-sm px-4 py-2 ${
+                        savedProfiles[profile.id] 
+                          ? 'bg-black hover:bg-black/90 text-white' 
+                          : ''
+                      }`}
+                      onClick={(e) => handleSaveToggle(e, profile.id)}
+                      disabled={!isSavedStatusLoaded}
+                    >
+                      {!isSavedStatusLoaded ? 'Loading...' : (savedProfiles[profile.id] ? 'Saved' : 'Save')}
+                    </Button>
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2">
+                      Start Chat
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

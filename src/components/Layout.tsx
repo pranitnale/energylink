@@ -68,6 +68,14 @@ export default function Layout({ children }: LayoutProps) {
                     Find Partners
                   </Link>
                   <Link 
+                    to="/saved" 
+                    className={`text-sm font-medium transition-colors hover:text-green-600 ${
+                      isActive('/saved') ? 'text-green-600' : 'text-gray-600'
+                    }`}
+                  >
+                    Saved Contacts
+                  </Link>
+                  <Link 
                     to="/profile" 
                     className={`text-sm font-medium transition-colors hover:text-green-600 ${
                       isActive('/profile') ? 'text-green-600' : 'text-gray-600'
@@ -141,6 +149,13 @@ export default function Layout({ children }: LayoutProps) {
                       Find Partners
                     </Link>
                     <Link 
+                      to="/saved" 
+                      className="text-sm font-medium text-gray-600 hover:text-green-600"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Saved Contacts
+                    </Link>
+                    <Link 
                       to="/profile" 
                       className="text-sm font-medium text-gray-600 hover:text-green-600"
                       onClick={() => setIsMobileMenuOpen(false)}
@@ -212,6 +227,7 @@ export default function Layout({ children }: LayoutProps) {
                 {isAuthenticated && (
                   <>
                     <li><Link to="/search" className="hover:text-green-600">Find Partners</Link></li>
+                    <li><Link to="/saved" className="hover:text-green-600">Saved Contacts</Link></li>
                     <li><Link to="/profile" className="hover:text-green-600">My Profile</Link></li>
                   </>
                 )}

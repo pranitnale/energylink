@@ -6,27 +6,44 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Award, Globe2, Mail, MessageSquare, Clock, Briefcase } from "lucide-react";
+import { Award, Globe2, Mail, MessageSquare, Clock, Briefcase, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { CircularProgress } from "@/components/CircularProgress";
 import { Progress } from "@/components/ui/progress";
+import { saveProfile, checkIfProfileSaved, deleteSavedProfile } from '@/lib/services/savedProfiles';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
 type LocationState = {
   synergyScore?: SynergyScoreType;
   fromSearch?: boolean;
+  fromSaved?: boolean;
+  queryText?: string;
 };
 
 export default function ViewProfile() {
   const { profileId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { synergyScore, fromSearch } = location.state as LocationState || {};
+  const { synergyScore, fromSearch, fromSaved, queryText } = location.state as LocationState || {};
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isCheckingSaved, setIsCheckingSaved] = useState(true);
+
+  useEffect(() => {
+    const checkSavedStatus = async () => {
+      if (profileId) {
+        const savedId = await checkIfProfileSaved(profileId);
+        setIsSaved(!!savedId);
+      }
+      setIsCheckingSaved(false);
+    };
+
+    checkSavedStatus();
+  }, [profileId]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -52,6 +69,52 @@ export default function ViewProfile() {
       fetchProfile();
     }
   }, [profileId]);
+
+  const handleSaveToggle = async () => {
+    if (!fromSearch || !synergyScore) {
+      toast.error('Cannot save profile without search context');
+      return;
+    }
+
+    if (isSaved) {
+      // Delete the saved profile
+      const success = await deleteSavedProfile(profileId!);
+      if (success) {
+        setIsSaved(false);
+      }
+      return;
+    }
+
+    // Get query ID from location state or try to find it
+    let queryId = location.state?.queryId;
+    if (!queryId) {
+      // Try to get the latest query match for this profile
+      const { data: matches } = await supabase
+        .from('query_matches')
+        .select('query_id, matches')
+        .filter('matches', 'cs', `[{"candidate_id": "${profileId}"}]`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!matches) {
+        toast.error('Failed to retrieve search context');
+        return;
+      }
+      queryId = matches.query_id;
+    }
+
+    const result = await saveProfile({
+      candidateId: profileId!,
+      queryId: queryId,
+      snapshotScore: synergyScore.score,
+      snapshotRationale: synergyScore.explanation,
+    });
+
+    if (result) {
+      setIsSaved(true);
+    }
+  };
 
   if (loading) {
     return (
@@ -80,6 +143,17 @@ export default function ViewProfile() {
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto space-y-8">
+        {/* Query Text Banner - Show when coming from saved contacts */}
+        {fromSaved && queryText && (
+          <div className="bg-gray-50 border-b border-gray-100 px-8 py-4">
+            <div className="flex items-center gap-3 text-gray-600">
+              <Search className="w-5 h-5" />
+              <span className="font-medium text-lg">Saved from search:</span>
+              <span className="italic text-lg flex-1">&quot;{queryText}&quot;</span>
+            </div>
+          </div>
+        )}
+
         {/* Profile Header */}
         <Card>
           <CardHeader className="pb-0">
@@ -99,14 +173,28 @@ export default function ViewProfile() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Save Contact
-                </Button>
-                <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Start Chat
-                </Button>
+                {fromSearch && (
+                  <>
+                    <Button 
+                      variant={isSaved ? "default" : "outline"}
+                      size="sm"
+                      className={`${
+                        isSaved 
+                          ? 'bg-black hover:bg-black/90 text-white' 
+                          : ''
+                      }`}
+                      onClick={handleSaveToggle}
+                      disabled={isCheckingSaved}
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
+                      {isCheckingSaved ? 'Checking...' : (isSaved ? 'Saved' : 'Save Contact')}
+                    </Button>
+                    <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Start Chat
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </CardHeader>

@@ -200,12 +200,13 @@ export interface SynergyScore {
   candidate_id: string;
   score: number;
   dimension: {
-    E?: number;
-    T?: number;
-    C?: number;
-    R?: number;
+    E: number; // Experience
+    T: number; // Technical
+    C: number; // Certifications
+    R: number; // Region
   };
   explanation: string;
+  query_id?: string; // Optional query ID field
 }
 
 export interface QueryMatch {
