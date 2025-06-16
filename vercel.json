@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+      { "source": "/api/:path*", "destination": "/api/:path*" },   // keep this if you ever add Vercel Functions
+      { "source": "/:path*",      "destination": "/index.html" }   // SPA fallback
+    ],
+    "cleanUrls": true            // optional, strips ".html" from URLs
+  }
+  
