@@ -47,11 +47,11 @@ export async function analyzeResume(pdfData: ArrayBuffer): Promise<ResumeAnalysi
       {
         text: `Analyze this resume and extract ONLY the following information. Return it as a clean JSON object with no additional text or formatting:
         {
-          "full_name": "extracted name",
-          "region_tags": ["array", "of", "regions"],
-          "tech_tags": ["array", "of", "technical", "skills"],
-          "languages": ["array", "of", "languages"],
-          "experience": "3-5 sentence summary of resume, focusing on impressive acheiivements, past projects and professional experience"
+          "full_name": "extracted name","
+          "region_tags": ["strictly", "array", "of", "regions", "countries", "places", "cities", etc],
+          "tech_tags": ["strictly", "array", "of", "technical", "skills"],
+          "languages": ["strictly", "array", "of", "languages"],
+          "experience": "3-5 sentence summary of resume, focusing on impressive acheiivements, past projects!!! and professional experience for example:Quality control engineer with 6 years of experience ensuring compliance and performance standards in energy projects. Developed quality assurance protocols for major wind and solar installations across Eastern Europe. Expert in field testing and equipment certification. Background in mechanical engineering with focus on renewable energy systems."
         }`
       } as Part
     ];

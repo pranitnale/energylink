@@ -1,22 +1,12 @@
-# Welcome to your Lovable project
+# EnergyLink
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/2af32871-ad5e-4b82-9930-688873d51979
+**Description**: [Add your project description here.]
 
 ## How can I edit this code?
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/2af32871-ad5e-4b82-9930-688873d51979) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+You can edit this application using your preferred IDE or directly in GitHub.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
@@ -62,12 +52,8 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/2af32871-ad5e-4b82-9930-688873d51979) and click on Share -> Publish.
+[Add your deployment instructions here.]
 
-## Can I connect a custom domain to my Lovable project?
+## Can I connect a custom domain to my project?
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+[Add your custom domain instructions here.]

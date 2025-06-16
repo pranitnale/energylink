@@ -6,19 +6,42 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
-import { Database } from '@/integrations/supabase/types';
+import { Database, SynergyScore as SynergyScoreType, QueryMatch } from '@/integrations/supabase/types';
+import { SynergyScore } from '@/components/SynergyScore';
+import { toast } from 'sonner';
+import { API_CONFIG } from '@/lib/config';
+import { CircularProgress } from '@/components/CircularProgress';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
+
+// Create a custom hook for persisting search state
+const usePersistedState = <T,>(key: string, initialValue: T) => {
+  const [state, setState] = useState<T>(() => {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : initialValue;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(key, JSON.stringify(state));
+  }, [key, state]);
+
+  return [state, setState] as const;
+};
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profiles, setProfiles] = usePersistedState<Profile[]>('profiles', []);
+  const [synergyScores, setSynergyScores] = usePersistedState<Record<string, SynergyScoreType>>('synergyScores', {});
   const [error, setError] = useState<string | null>(null);
+  const [currentQueryId, setCurrentQueryId] = usePersistedState<string | null>('currentQueryId', null);
   const navigate = useNavigate();
 
+  // Initial load - fetch all profiles in alphabetical order if no persisted state
   useEffect(() => {
-    fetchProfiles();
+    if (profiles.length === 0) {
+      fetchProfiles();
+    }
   }, []);
 
   const fetchProfiles = async () => {
@@ -31,6 +54,11 @@ export default function Search() {
 
       if (error) throw error;
       setProfiles(data || []);
+      setSynergyScores({}); // Clear any existing scores
+      setCurrentQueryId(null); // Reset current query
+      localStorage.removeItem('profiles');
+      localStorage.removeItem('synergyScores');
+      localStorage.removeItem('currentQueryId');
     } catch (err) {
       console.error('Error fetching profiles:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch profiles');
@@ -39,21 +67,106 @@ export default function Search() {
     }
   };
 
+  // Fetch query matches from database
+  const fetchQueryMatches = async (queryId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('query_matches')
+        .select('*')
+        .eq('query_id', queryId)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        const matches = data.matches as SynergyScoreType[];
+        const scoresMap = matches.reduce((acc: Record<string, SynergyScoreType>, score: SynergyScoreType) => {
+          acc[score.candidate_id] = score;
+          return acc;
+        }, {});
+        setSynergyScores(scoresMap);
+
+        // Sort profiles by score
+        const sortedProfiles = [...profiles].sort((a, b) => {
+          const scoreA = scoresMap[a.id]?.score || 0;
+          const scoreB = scoresMap[b.id]?.score || 0;
+          return scoreB - scoreA;
+        });
+        setProfiles(sortedProfiles);
+      }
+    } catch (err) {
+      console.error('Error fetching query matches:', err);
+      toast.error('Failed to fetch search results');
+    }
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!searchQuery.trim()) return;
+
     setIsLoading(true);
-    
-    // TODO: Implement search functionality
-    console.log('Searching for:', searchQuery);
-    
-    // Simulate API call
-    setTimeout(() => {
+    setError(null);
+    setSynergyScores({});
+
+    try {
+      // 1. Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // 2. Insert query into Supabase
+      const { data: queryData, error: queryError } = await supabase
+        .from('queries')
+        .insert({
+          user_id: user.id,
+          query_text: searchQuery,
+          structured_payload: { query: searchQuery },
+        })
+        .select()
+        .single();
+      if (queryError) throw queryError;
+
+      // Store query ID for later use
+      setCurrentQueryId(queryData.id);
+
+      // 3. Call synergy scoring API using environment-aware URL
+      const response = await fetch(API_CONFIG.SYNERGY_API_URL, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_CONFIG.SYNERGY_API_KEY}`
+        },
+        body: JSON.stringify({
+          queryId: queryData.id,
+          queryText: searchQuery,
+          structuredPayload: { query: searchQuery },
+          userId: user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get search results');
+      }
+
+      // 4. Fetch the stored query matches
+      await fetchQueryMatches(queryData.id);
+      toast.success('Search completed successfully');
+    } catch (err) {
+      console.error('Search error:', err);
+      setError(err instanceof Error ? err.message : 'Search failed');
+      toast.error('Search failed. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleProfileClick = (profileId: string) => {
-    navigate(`/profile/${profileId}`);
+    navigate(`/profile/${profileId}`, {
+      state: { 
+        synergyScore: synergyScores[profileId],
+        fromSearch: true
+      }
+    });
   };
 
   const renderProfileCards = () => {
@@ -86,25 +199,33 @@ export default function Search() {
       >
         <CardHeader className="pb-4">
           <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center">
-                <Users className="w-7 h-7 text-green-600" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-semibold text-gray-900 mb-1">
-                  {profile.full_name}
-                </CardTitle>
-                <p className="text-lg text-gray-600">{profile.primary_role?.[0]}</p>
-                {profile.primary_role && profile.primary_role.length > 1 && (
-                  <p className="text-sm text-gray-500 mt-1">+{profile.primary_role.length - 1} other roles</p>
-                )}
+            <div className="flex-1">
+              <div className="flex items-start space-x-4">
+                <div className="w-14 h-14 bg-gradient-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center">
+                  <Users className="w-7 h-7 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="text-xl font-semibold text-gray-900 mb-1">
+                    {profile.full_name}
+                  </CardTitle>
+                  <p className="text-lg text-gray-600 mb-2">{profile.primary_role?.[0]}</p>
+                  {profile.primary_role && profile.primary_role.length > 1 && (
+                    <p className="text-sm text-gray-500 mb-2">+{profile.primary_role.length - 1} other roles</p>
+                  )}
+                </div>
               </div>
             </div>
-            {profile.mw_experience && (
-              <div className="text-right">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className="text-3xl font-bold text-green-600">{profile.mw_experience}</div>
-                  <div className="text-sm text-gray-500">MW<br/>Experience</div>
+            {synergyScores[profile.id] && (
+              <div className="flex items-center space-x-4">
+                <div className="flex-1 max-w-md">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-base font-semibold text-gray-700 leading-snug">
+                      {synergyScores[profile.id].explanation}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <CircularProgress value={synergyScores[profile.id].score} />
                 </div>
               </div>
             )}
@@ -202,7 +323,13 @@ export default function Search() {
               >
                 {isLoading ? 'Searching...' : 'Search'}
               </Button>
-              <Button variant="outline" size="icon" className="h-12 w-12">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="h-12 w-12"
+                onClick={fetchProfiles}
+                title="Reset to alphabetical order"
+              >
                 <Filter className="w-5 h-5" />
               </Button>
             </form>
@@ -213,20 +340,11 @@ export default function Search() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">
-              All Partners
+              {currentQueryId ? 'Matching Partners' : 'All Partners'}
               <span className="text-gray-500 font-normal ml-2">({profiles.length} partners)</span>
             </h2>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <span>Sort by:</span>
-              <Button variant="ghost" size="sm" className="text-green-600">
-                Name (A-Z)
-              </Button>
-            </div>
           </div>
-
-          <div className="grid gap-6">
-            {renderProfileCards()}
-          </div>
+          {renderProfileCards()}
         </div>
       </div>
     </div>

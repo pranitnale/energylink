@@ -195,3 +195,21 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+export interface SynergyScore {
+  candidate_id: string;
+  score: number;
+  dimension: {
+    E?: number;
+    T?: number;
+    C?: number;
+    R?: number;
+  };
+  explanation: string;
+}
+
+export interface QueryMatch {
+  query_id: string;
+  matches: SynergyScore[];
+  top_scores: number[];
+}

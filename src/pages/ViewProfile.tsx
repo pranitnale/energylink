@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { Database } from "@/integrations/supabase/types";
+import { Database, SynergyScore as SynergyScoreType } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Award, Globe2, Mail, MessageSquare, Clock, Briefcase } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { CircularProgress } from "@/components/CircularProgress";
+import { Progress } from "@/components/ui/progress";
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
+
+type LocationState = {
+  synergyScore?: SynergyScoreType;
+  fromSearch?: boolean;
+};
 
 export default function ViewProfile() {
   const { profileId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { synergyScore, fromSearch } = location.state as LocationState || {};
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +110,51 @@ export default function ViewProfile() {
               </div>
             </div>
           </CardHeader>
+
+          {/* Synergy Score Section - Only shown when coming from search */}
+          {fromSearch && synergyScore && (
+            <CardContent className="pt-6 pb-0">
+              <div className="border rounded-lg p-6 bg-gray-50">
+                <div className="flex flex-col space-y-6">
+                  <div className="flex items-center justify-center gap-20">
+                    {/* Main Synergy Score */}
+                    <div className="scale-150 origin-center -ml-8 flex items-center">
+                      <CircularProgress value={synergyScore.score} />
+                    </div>
+                    
+                    {/* Dimension Scores */}
+                    <div className="space-y-4 w-[250px] flex flex-col justify-center">
+                      {Object.entries({
+                        E: { label: 'Experience', value: synergyScore.dimension.E },
+                        T: { label: 'Technical', value: synergyScore.dimension.T },
+                        C: { label: 'Certifications', value: synergyScore.dimension.C },
+                        R: { label: 'Region', value: synergyScore.dimension.R }
+                      }).map(([key, { label, value }]) => value !== undefined && (
+                        <div key={key}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="font-medium text-gray-600">{label}</span>
+                            <span className="font-semibold">{value}/5</span>
+                          </div>
+                          <Progress 
+                            value={(value / 5) * 100} 
+                            className="h-2 [&>div]:bg-green-600"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Explanation Text */}
+                  <div className="bg-white p-4 rounded-lg">
+                    <p className="text-base font-semibold text-gray-700 leading-snug">
+                      {synergyScore.explanation}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+
           <CardContent className="pt-6">
             <div className="grid gap-6">
               {/* Experience and Availability */}
