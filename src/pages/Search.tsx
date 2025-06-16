@@ -145,7 +145,17 @@ export default function Search() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to get search results');
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(errorData.error || `API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (!data.matches) {
+        throw new Error('Invalid response format from API');
       }
 
       // 4. Fetch the stored query matches
@@ -153,8 +163,9 @@ export default function Search() {
       toast.success('Search completed successfully');
     } catch (err) {
       console.error('Search error:', err);
-      setError(err instanceof Error ? err.message : 'Search failed');
-      toast.error('Search failed. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Search failed';
+      setError(errorMessage);
+      toast.error(`Search failed: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
