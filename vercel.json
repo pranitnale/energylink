@@ -9,6 +9,10 @@
         "destination": "/index.html"
       }
     ],
-    "cleanUrls": true
+    "cleanUrls": true,
+    "routes": [
+      { "handle": "filesystem" },
+      { "src": "/[^.]+", "dest": "/", "status": 200 }
+    ]
   }
   
