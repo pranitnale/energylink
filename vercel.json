@@ -6,13 +6,38 @@
       },
       {
         "source": "/:path*",
-        "destination": "/index.html"
+        "destination": "/"
       }
     ],
     "cleanUrls": true,
     "routes": [
-      { "handle": "filesystem" },
-      { "src": "/[^.]+", "dest": "/", "status": 200 }
+      {
+        "src": "^/api/(.*)",
+        "dest": "/api/$1"
+      },
+      {
+        "src": "^/static/(.*)",
+        "dest": "/static/$1"
+      },
+      {
+        "src": "^/favicon.ico",
+        "dest": "/favicon.ico"
+      },
+      {
+        "src": "^/manifest.json",
+        "dest": "/manifest.json"
+      },
+      {
+        "src": "^/(.*).(js|css|png|jpg|jpeg|gif|ico|json|svg)$",
+        "dest": "/$1.$2"
+      },
+      {
+        "src": "^/(.*)",
+        "dest": "/index.html",
+        "headers": {
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+      }
     ]
   }
   
