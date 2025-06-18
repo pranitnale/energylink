@@ -50,8 +50,8 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 interface ProfileFormProps {
-  initialData?: Partial<ProfileFormValues>;
-  onSubmit: (data: ProfileFormValues) => Promise<void>;
+  initialData?: Partial<Profile>;
+  onSubmit: (data: Partial<Profile>) => Promise<void>;
 }
 
 const roles = [
@@ -148,7 +148,7 @@ export function ProfileForm({ initialData, onSubmit }: ProfileFormProps) {
       intent: initialData?.intent?.[0] || "",
       tech_tags: initialData?.tech_tags || [],
       certifications: initialData?.certifications || [],
-      availability: initialData?.availability || "",
+      availability: initialData?.availability?.toString() || "",
       languages: initialData?.languages || [],
       ikigai: initialData?.ikigai || {},
       resume_text: initialData?.resume_text || "",
@@ -158,7 +158,14 @@ export function ProfileForm({ initialData, onSubmit }: ProfileFormProps) {
 
   const handleSubmit = async (data: ProfileFormValues) => {
     try {
-      await onSubmit(data);
+      // Transform form data to match Profile type
+      const profileData: Partial<Profile> = {
+        ...data,
+        primary_role: [data.primary_role],
+        intent: [data.intent],
+        availability: parseInt(data.availability, 10),
+      };
+      await onSubmit(profileData);
       toast.success("Profile updated successfully");
     } catch (error) {
       toast.error("Failed to update profile");
@@ -204,8 +211,8 @@ export function ProfileForm({ initialData, onSubmit }: ProfileFormProps) {
   };
 
   const handleAddCustomExpertise = () => {
-    if (newCustomExpertise && !form.getValues("tech_tags").includes(newCustomExpertise)) {
-      const currentExpertise = form.getValues("tech_tags");
+    if (newCustomExpertise) {
+      const currentExpertise = form.getValues("tech_tags") || [];
       form.setValue("tech_tags", [...currentExpertise, newCustomExpertise]);
       setNewCustomExpertise("");
       setShowCustomExpertiseDialog(false);
@@ -218,8 +225,8 @@ export function ProfileForm({ initialData, onSubmit }: ProfileFormProps) {
   };
 
   const handleAddCustomRegion = () => {
-    if (newCustomRegion && !form.getValues("region_tags").includes(newCustomRegion)) {
-      const currentRegions = form.getValues("region_tags");
+    if (newCustomRegion) {
+      const currentRegions = form.getValues("region_tags") || [];
       form.setValue("region_tags", [...currentRegions, newCustomRegion]);
       setNewCustomRegion("");
       setShowCustomRegionDialog(false);

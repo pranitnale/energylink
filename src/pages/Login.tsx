@@ -56,7 +56,7 @@ export default function Login() {
     setLoading(true);
     
     // TODO: Implement Supabase magic link
-    console.log('Magic link sent to:', email);
+    
     
     setTimeout(() => {
       setLoading(false);
@@ -138,7 +138,7 @@ export default function Login() {
                 </div>
 
                 <div className="text-sm">
-                  <Link to="/forgot-password" className="font-medium text-green-600 hover:text-green-500">
+                  <Link to="/reset-password" className="font-medium text-green-600 hover:text-green-500">
                     Forgot password?
                   </Link>
                 </div>

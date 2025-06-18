@@ -11,26 +11,60 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const getProfile = async (userId: string) => {
-  const { data, error } = await supabase
+  // First try to get the existing profile
+  const { data: existingProfile, error: fetchError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', userId)
     .single();
 
-  if (error) throw error;
-  return data;
+  if (!fetchError && existingProfile) {
+    return existingProfile;
+  }
+
+  // If profile doesn't exist, create one
+  const { data: newProfile, error: insertError } = await supabase
+    .from('profiles')
+    .insert([{ id: userId }])
+    .select()
+    .single();
+
+  if (insertError) throw insertError;
+  return newProfile;
 };
 
 export const updateProfile = async (userId: string, profile: Partial<Profile>) => {
-  const { data, error } = await supabase
+  // First check if profile exists
+  const { data: existingProfile, error: fetchError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (fetchError && fetchError.code === 'PGRST116') {
+    // Profile doesn't exist, create it
+    const { data: newProfile, error: insertError } = await supabase
+      .from('profiles')
+      .insert([{ id: userId, ...profile }])
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+    return newProfile;
+  } else if (fetchError) {
+    throw fetchError;
+  }
+
+  // Profile exists, update it
+  const { data: updatedProfile, error: updateError } = await supabase
     .from('profiles')
     .update(profile)
     .eq('id', userId)
     .select()
     .single();
 
-  if (error) throw error;
-  return data;
+  if (updateError) throw updateError;
+  return updatedProfile;
 };
 
 export async function getUniquePrimaryRoles(): Promise<string[]> {

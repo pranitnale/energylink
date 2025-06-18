@@ -40,8 +40,7 @@ export async function scoreSynergy({ queryId, queryText, structuredPayload, user
   const result = await model.generateContent(prompt);
   const response = await result.response;
   const responseText = response.text();
-  console.log('Gemini request:', prompt);
-  console.log('Gemini response:', responseText);
+  
 
   // 4. Parse Gemini response
   let matches;

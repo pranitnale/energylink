@@ -62,7 +62,7 @@ export async function analyzeResume(pdfData: ArrayBuffer): Promise<ResumeAnalysi
     
     // Clean and parse the JSON response
     const cleanedText = cleanJsonResponse(responseText);
-    console.log('Cleaned response:', cleanedText); // For debugging
+
     const parsedResult = JSON.parse(cleanedText);
 
     // Validate and ensure all required fields are present

@@ -2,7 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { 
+  createBrowserRouter, 
+  RouterProvider, 
+  Navigate,
+  Outlet,
+  createRoutesFromElements,
+  Route 
+} from "react-router-dom";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -12,8 +19,10 @@ import Profile from "./pages/Profile";
 import ViewProfile from "./pages/ViewProfile";
 import SavedContacts from "./pages/SavedContacts";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
+import ChatPage from './pages/chat';
 
 const queryClient = new QueryClient();
 
@@ -35,63 +44,67 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
+// Create router with React Router v7 configuration
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <Route>
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route element={<Layout><Outlet /></Layout>}>
+        <Route path="/" element={<Home />} />
+        <Route
+          path="/search"
+          element={
+            <PrivateRoute>
+              <Search />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile/:profileId"
+          element={
+            <PrivateRoute>
+              <ViewProfile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/saved"
+          element={
+            <PrivateRoute>
+              <SavedContacts />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <PrivateRoute>
+              <ChatPage />
+            </PrivateRoute>
+          }
+        />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Route>
+  )
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route element={<Layout><Outlet /></Layout>}>
-            <Route path="/" element={<Home />} />
-            <Route
-              path="/search"
-              element={
-                <PrivateRoute>
-                  <Search />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <PrivateRoute>
-                  <Profile />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/profile/:profileId"
-              element={
-                <PrivateRoute>
-                  <ViewProfile />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/saved"
-              element={
-                <PrivateRoute>
-                  <SavedContacts />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/chat"
-              element={
-                <PrivateRoute>
-                  <div className="p-8 text-center text-gray-600">
-                    Chat page - Coming in Step 4
-                  </div>
-                </PrivateRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </TooltipProvider>
   </QueryClientProvider>
 );

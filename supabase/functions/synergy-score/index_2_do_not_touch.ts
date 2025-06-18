@@ -1,36 +1,20 @@
 // Setup type definitions for built-in Supabase Runtime APIs OG
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Update this to your Vercel app URL in production
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
-}
-
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { GoogleGenerativeAI } from 'npm:@google/generative-ai';
+serve(async (req)=>{
   try {
     const { queryId, queryText, structuredPayload, userId } = await req.json();
     // 1. Connect to Supabase
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const supabase = createClient(Deno.env.get('SDB_URL'), Deno.env.get('SDB_SERVICE_ROLE_KEY'));
     // 2. Fetch all candidate profiles
-    const { data: candidates, error: profilesError } = await supabaseClient.from('profiles').select('id, region_tags, tech_tags, certifications, experience');
+    const { data: candidates, error: profilesError } = await supabase.from('profiles').select('id, region_tags, tech_tags, certifications, experience');
     if (profilesError) throw profilesError;
     // 3. Build Gemini prompt (full rubric)
     const RUBRIC_PROMPT = `SYSTEM
 You are EnergyLink-Scorer v2, an impartial evaluation engine.
-Your sole task is to score how well each *candidate* fits the *seeker's query*
+Your sole task is to score how well each *candidate* fits the *seeker’s query*
 using ONLY the four dimensions defined below.  
 Return STRICT JSON – **an array of objects**, one per candidate, NO extra keys,
 NO commentary outside the JSON, and do not pretty-print (minified).
@@ -44,7 +28,7 @@ Return an array of JSON objects exactly matching the schema. Do NOT add prose.
 
 ###############################################################################
 E  Experience         – semantic similarity between query need and the
-                        candidate's project *experience* text.   • weight 35 %
+                        candidate’s project *experience* text.   • weight 35 %
 T  Technical expertise – semantic technical expertise overlap between \`tech_tags\` lists.  • weight 35 %
 C  Certifications      – whether candidate satisfies any certification needs   • weight 15 %
                         named in the query.
@@ -125,7 +109,7 @@ CANDIDATES:
         experience: c.experience
       }))));
     // 4. Call Gemini
-    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY') ?? '');
+    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY'));
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash'
     });
@@ -141,20 +125,19 @@ CANDIDATES:
     }
     // 5. Store in query_matches
     const topScores = matches.slice(0, 20).map((m)=>m.score);
-    const { error: insertError } = await supabaseClient.from('query_matches').insert({
+    const { error: insertError } = await supabase.from('query_matches').insert({
       query_id: queryId,
       matches: matches,
       top_scores: topScores
     });
     if (insertError) throw insertError;
-    // 6. Return result with CORS headers
+    // 6. Return result
     return new Response(JSON.stringify({
       matches,
       topScores
     }), {
       headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders
+        'Content-Type': 'application/json'
       }
     });
   } catch (error) {
@@ -163,8 +146,7 @@ CANDIDATES:
     }), {
       status: 500,
       headers: {
-        'Content-Type': 'application/json',
-        ...corsHeaders
+        'Content-Type': 'application/json'
       }
     });
   }

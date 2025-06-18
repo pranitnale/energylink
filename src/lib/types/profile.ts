@@ -1,7 +1,7 @@
 export interface Profile {
   id: string;
-  email: string;
-  full_name: string;
+  email?: string;
+  full_name?: string;
   contact_number?: string;
   primary_role: string[];
   region_tags?: string[];
@@ -10,6 +10,7 @@ export interface Profile {
   certifications?: string[];
   availability?: number;
   languages: string[];
+  avatar_url?: string;
   ikigai?: {
     passion?: string;
     mission?: string;
@@ -17,7 +18,7 @@ export interface Profile {
     profession?: string;
   };
   resume_text?: string;
-  experience: string;
+  experience?: string;
   created_at?: string;
   updated_at?: string;
 }

@@ -9,14 +9,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Trash2, Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [email, setEmail] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
+  // Add this temporary function for testing
+  const getAuthToken = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+      console.error('Error getting session:', error);
+      return;
+    }
+    
+    if (session) {
+
+    }
+  };
+
   useEffect(() => {
+    // Add this temporary call
+    getAuthToken();
+    
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -46,18 +79,92 @@ export default function ProfilePage() {
     try {
       // Remove email before sending to Supabase
       const { email, ...profileData } = data;
-      const profileUpdate = {
+      
+      // Ensure arrays are handled correctly
+      const profileUpdate: Partial<Profile> = {
         ...profileData,
-        primary_role: Array.isArray(data.primary_role) ? data.primary_role : data.primary_role ? [data.primary_role] : [],
-        intent: Array.isArray(data.intent) ? data.intent : data.intent ? [data.intent] : [],
-        tech_tags: Array.isArray(data.tech_tags) ? data.tech_tags : data.tech_tags ? [data.tech_tags] : [],
+        primary_role: Array.isArray(data.primary_role) ? data.primary_role : [data.primary_role],
+        intent: Array.isArray(data.intent) ? data.intent : [data.intent],
+        tech_tags: Array.isArray(data.tech_tags) ? data.tech_tags : [data.tech_tags],
+        languages: Array.isArray(data.languages) ? data.languages : [data.languages],
       };
+      
       const updatedProfile = await updateProfile(user.id, profileUpdate);
       setProfile(updatedProfile);
       toast.success("Profile updated successfully");
     } catch (error) {
       console.error("Error updating profile:", error);
       toast.error("Failed to update profile");
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // Call the Edge Function to delete the auth user and related data
+      const { data, error: functionError } = await supabase.functions.invoke('delete-user', {
+        body: {
+          userId: user.id,
+          email: user.email
+        }
+      });
+
+      if (functionError) {
+        console.error('Edge function error:', functionError);
+        throw new Error(functionError.message || 'Failed to delete account');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to delete account');
+      }
+
+
+
+      // Show appropriate message based on deletion status
+      if (data.details.status === 'disabled') {
+        toast.warning(
+          "Account disabled but not fully deleted. Your messages will be preserved but marked as from a deleted user. Try again in a few minutes to complete deletion.",
+          { duration: 10000 }
+        );
+      } else {
+        toast.success(
+          "Account successfully deleted. Your messages will be preserved but marked as from a deleted user.",
+          { duration: 5000 }
+        );
+      }
+      
+      // Sign out the user after successful deletion/disable
+      await supabase.auth.signOut();
+      
+      // Use replace to prevent going back to profile
+      navigate("/", { replace: true });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      
+      // Show more detailed error message
+      if (error instanceof Error) {
+        if (error.message.includes('session')) {
+          toast.error(
+            "Failed to delete account: Please sign out and back in, then try again.",
+            { duration: 8000 }
+          );
+        } else {
+          toast.error(
+            `Failed to delete account: ${error.message}. Please try again.`,
+            { duration: 8000 }
+          );
+        }
+      } else {
+        toast.error("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -114,6 +221,64 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 <ProfileForm initialData={{ ...profile, email }} onSubmit={handleSubmit} />
+              </CardContent>
+            </Card>
+
+            <Card className="mt-8 border-destructive">
+              <CardHeader>
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                <CardDescription>
+                  Permanently delete your account and all associated data
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full sm:w-auto">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Account
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <div className="space-y-2">
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will:
+                        </AlertDialogDescription>
+                        <ul className="list-disc pl-6 text-sm text-muted-foreground">
+                          <li>Delete your profile and account</li>
+                          <li>Remove you from all chats</li>
+                          <li>Preserve your sent messages (marked as "Deleted User")</li>
+                          <li>Delete all other data associated with your account</li>
+                        </ul>
+                      </div>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleDeleteProfile();
+                        }}
+                        className="bg-destructive hover:bg-destructive/90"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Account
+                          </>
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </TabsContent>

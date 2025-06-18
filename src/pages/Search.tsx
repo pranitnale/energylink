@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { API_CONFIG } from '@/lib/config';
 import { CircularProgress } from '@/components/CircularProgress';
 import { saveProfile, checkIfProfileSaved, deleteSavedProfile, checkMultipleProfilesSaved } from '@/lib/services/savedProfiles';
+import { chatService } from '@/lib/chat-service';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -197,6 +198,23 @@ export default function Search() {
     });
   };
 
+  const handleStartChat = async (e: React.MouseEvent, profileId: string) => {
+    e.stopPropagation(); // Prevent profile card click event
+    
+    try {
+      const chatId = await chatService.createDirectChat(profileId);
+      if (chatId) {
+        navigate(`/chat?chat=${chatId}`);
+        toast.success('Chat started successfully');
+      } else {
+        toast.error('Failed to start chat');
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast.error('Failed to start chat');
+    }
+  };
+
   const handleSaveToggle = async (e: React.MouseEvent, profileId: string) => {
     e.stopPropagation(); // Prevent profile card click event
 
@@ -355,7 +373,11 @@ export default function Search() {
                     >
                       {!isSavedStatusLoaded ? 'Loading...' : (savedProfiles[profile.id] ? 'Saved' : 'Save')}
                     </Button>
-                    <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2">
+                    <Button 
+                      size="sm" 
+                      className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2"
+                      onClick={(e) => handleStartChat(e, profile.id)}
+                    >
                       Start Chat
                     </Button>
                   </>
@@ -402,12 +424,12 @@ export default function Search() {
               </Button>
               <Button 
                 variant="outline" 
-                size="icon" 
-                className="h-12 w-12"
+                className="h-12 flex items-center gap-2"
                 onClick={fetchProfiles}
                 title="Reset to alphabetical order"
               >
                 <Filter className="w-5 h-5" />
+                Reset
               </Button>
             </form>
           </CardContent>
