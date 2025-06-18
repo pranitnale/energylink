@@ -8,7 +8,8 @@ import {
   Navigate,
   Outlet,
   createRoutesFromElements,
-  Route 
+  Route,
+  createHashRouter
 } from "react-router-dom";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
@@ -44,60 +45,61 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
-// Create router with React Router v7 configuration
-const router = createBrowserRouter(
-  createRoutesFromElements(
-    <Route>
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route element={<Layout><Outlet /></Layout>}>
-        <Route path="/" element={<Home />} />
-        <Route
-          path="/search"
-          element={
-            <PrivateRoute>
-              <Search />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/profile/:profileId"
-          element={
-            <PrivateRoute>
-              <ViewProfile />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/saved"
-          element={
-            <PrivateRoute>
-              <SavedContacts />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/chat"
-          element={
-            <PrivateRoute>
-              <ChatPage />
-            </PrivateRoute>
-          }
-        />
-        <Route path="*" element={<NotFound />} />
-      </Route>
+// Create routes configuration
+const routes = createRoutesFromElements(
+  <Route>
+    <Route path="/login" element={<Login />} />
+    <Route path="/signup" element={<Signup />} />
+    <Route path="/reset-password" element={<ResetPassword />} />
+    <Route element={<Layout><Outlet /></Layout>}>
+      <Route path="/" element={<Home />} />
+      <Route
+        path="/search"
+        element={
+          <PrivateRoute>
+            <Search />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <Profile />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/profile/:profileId"
+        element={
+          <PrivateRoute>
+            <ViewProfile />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/saved"
+        element={
+          <PrivateRoute>
+            <SavedContacts />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/chat"
+        element={
+          <PrivateRoute>
+            <ChatPage />
+          </PrivateRoute>
+        }
+      />
+      <Route path="*" element={<NotFound />} />
     </Route>
-  )
+  </Route>
 );
+
+// Use HashRouter for better compatibility with static hosting
+const router = createHashRouter(routes);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

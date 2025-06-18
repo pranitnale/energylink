@@ -9,7 +9,11 @@
       "destination": "/static/:path*"
     },
     {
-      "source": "/:path*",
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/((?!api|static|assets).*)",
       "destination": "/index.html"
     }
   ],
@@ -19,7 +23,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }
