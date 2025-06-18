@@ -42,10 +42,10 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen w-full flex flex-col bg-white">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="w-full bg-white shadow-sm border-b border-gray-100">
+        <div className="w-full max-w-[2000px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to={isAuthenticated ? "/search" : "/"} className="flex items-center space-x-2">
@@ -201,10 +201,8 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
-        <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
-          {children}
-        </div>
+      <main className="flex-1 w-full">
+        {children}
       </main>
 
       {/* Footer */}
