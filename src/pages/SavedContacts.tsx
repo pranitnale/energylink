@@ -1,7 +1,7 @@
 // File: src/pages/SavedContacts.tsx
 import { useState, useEffect } from 'react';
 import { Users, Globe2, Award, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Database } from '@/integrations/supabase/types';
 import { CircularProgress } from '@/components/CircularProgress';
 import { toast } from 'sonner';
 import { deleteSavedProfile } from '@/lib/services/savedProfiles';
+import { chatService } from '@/lib/chat-service';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -34,6 +35,7 @@ export default function SavedContacts() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     fetchSavedProfiles();
@@ -102,6 +104,22 @@ export default function SavedContacts() {
     if (success) {
       setSavedProfiles(prev => prev.filter(p => p.candidate_id !== profileId));
       toast.success('Contact removed from saved list');
+    }
+  };
+
+  const handleStartChat = async (e: React.MouseEvent, profileId: string) => {
+    e.stopPropagation(); // Prevent profile card click
+    try {
+      const chatId = await chatService.createDirectChat(profileId);
+      if (chatId) {
+        navigate('/chat');
+        setSearchParams({ chat: chatId });
+      } else {
+        toast.error('Failed to start chat');
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast.error('Failed to start chat');
     }
   };
 
@@ -250,10 +268,7 @@ export default function SavedContacts() {
                   <Button 
                     size="sm" 
                     className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/chat/${profile.id}`);
-                    }}
+                    onClick={(e) => handleStartChat(e, profile.id)}
                   >
                     Start Chat
                   </Button>
