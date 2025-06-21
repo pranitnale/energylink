@@ -21,6 +21,7 @@ import ViewProfile from "./pages/ViewProfile";
 import SavedContacts from "./pages/SavedContacts";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
+import AuthCallback from "./pages/auth/AuthCallback";
 import { useEffect, useState } from "react";
 import { supabase } from "./lib/supabase";
 import ChatPage from './pages/chat';
@@ -51,6 +52,7 @@ const routes = createRoutesFromElements(
     <Route path="/login" element={<Login />} />
     <Route path="/signup" element={<Signup />} />
     <Route path="/reset-password" element={<ResetPassword />} />
+    <Route path="/auth/callback" element={<AuthCallback />} />
     <Route element={<Layout><Outlet /></Layout>}>
       <Route path="/" element={<Home />} />
       <Route
@@ -99,7 +101,10 @@ const routes = createRoutesFromElements(
 );
 
 // Use HashRouter for better compatibility with static hosting
-const router = createHashRouter(routes);
+const router = createHashRouter(routes, {
+  // This ensures the router properly handles hash-based URLs
+  basename: '/'
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

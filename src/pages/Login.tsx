@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,20 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    // Check for messages in URL params
+    const message = searchParams.get('message');
+    const error = searchParams.get('error');
+
+    if (message) {
+      toast.success(message);
+    }
+    if (error) {
+      toast.error(error);
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,9 +58,13 @@ export default function Login() {
         }
         navigate('/profile');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error logging in:', error);
-      toast.error('Failed to log in. Please check your credentials.');
+      if (error.message?.includes('Email not confirmed')) {
+        toast.error('Please verify your email before logging in.');
+      } else {
+        toast.error('Failed to log in. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }

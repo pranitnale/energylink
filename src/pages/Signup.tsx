@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { createProfile } from '@/lib/auth';
 import { toast } from 'sonner';
+import type { Profile } from '@/lib/types/profile';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
@@ -21,54 +21,46 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // First sign up the user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Get the current site URL for redirection
+      const siteURL = window.location.origin;
+      // For hash router, we need to include the hash in the redirect
+      const redirectTo = `${siteURL}/#/auth/callback`;
+
+      // Sign up the user with email confirmation
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: redirectTo,
+          data: {
+            full_name: email.split('@')[0] || '',
+          }
+        },
       });
 
-      if (authError) throw authError;
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        throw signUpError;
+      }
 
       if (!authData.user) {
-        throw new Error('User creation failed');
+        throw new Error('User creation failed - no user data returned');
       }
 
-      // Wait a moment for the session to be established
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Get the session to ensure we're authenticated
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Show success message and redirect
+      toast.success('Account created! Please check your email to verify your account.');
+      navigate('/login');
       
-      if (sessionError) throw sessionError;
-      
-      if (!session) {
-        toast.info('Please check your email for verification link.');
-        navigate('/login');
-        return;
-      }
-
-      // Now create the profile
-      try {
-        await createProfile(authData.user.id, {
-          full_name: authData.user.email?.split('@')[0] || '',
-          primary_role: [],
-          intent: [],
-          tech_tags: [],
-          languages: ['English'],
-          experience: '',
-        });
-
-        toast.success('Account created successfully! Please check your email for verification.');
-        navigate('/profile');
-      } catch (profileError: any) {
-        console.error('Error creating profile:', profileError);
-        // If profile creation fails, we should clean up the auth user
-        await supabase.auth.signOut();
-        throw new Error('Failed to create profile. Please try again.');
-      }
     } catch (error: any) {
-      console.error('Error signing up:', error);
-      toast.error(error.message || 'Failed to create account. Please try again.');
+      console.error('Signup process error:', error);
+      
+      // Handle specific error cases
+      if (error.message?.toLowerCase().includes('email')) {
+        toast.error('An account with this email already exists. Please log in instead.');
+        navigate('/login');
+      } else {
+        toast.error(error.message || 'Failed to create account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,9 +71,12 @@ export default function Signup() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center">
-              <Zap className="w-8 h-8 text-white" />
-            </div>
+            <Link to="/" className="inline-flex items-center space-x-2">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-green-700 rounded-lg flex items-center justify-center">
+                <Zap className="w-8 h-8 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">EnergyLink</span>
+            </Link>
           </div>
           <CardTitle className="text-2xl text-center">Create your account</CardTitle>
           <CardDescription className="text-center">
@@ -99,6 +94,7 @@ export default function Signup() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
+                disabled={loading}
               />
             </div>
             <div>
@@ -109,7 +105,9 @@ export default function Signup() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a password"
+                placeholder="Create a password (min. 6 characters)"
+                minLength={6}
+                disabled={loading}
               />
             </div>
             <Button

@@ -1,9 +1,13 @@
 import { supabase } from './supabase';
-import { User } from '@supabase/supabase-js';
+import { User, AuthError } from '@supabase/supabase-js';
 import { Profile } from './types/profile';
 
 export async function getCurrentUser(): Promise<User | null> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) {
+    console.error('Error getting current user:', error);
+    throw error;
+  }
   return user;
 }
 
@@ -19,30 +23,74 @@ export async function signOut() {
 }
 
 export async function createProfile(userId: string, profileData: Partial<Profile>) {
-  // Get current session to ensure we're authenticated
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session) {
-    throw new Error('No authenticated session');
+  try {
+    // Get current session to ensure we're authenticated
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      throw sessionError;
+    }
+
+    if (!session) {
+      throw new Error('No authenticated session');
+    }
+
+    // Check if profile already exists
+    const { data: existingProfile, error: checkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking existing profile:', checkError);
+      throw checkError;
+    }
+
+    if (existingProfile) {
+      console.log('Profile already exists for user:', userId);
+      return existingProfile;
+    }
+
+    // Create new profile
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert([{ 
+        id: userId, 
+        auth_id: userId, // Ensure auth_id is set
+        ...profileData 
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating profile:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Profile creation failed:', error);
+    throw error;
   }
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert([{ id: userId, ...profileData }])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
 }
 
 export async function checkProfileExists(userId: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('id', userId)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
 
-  if (error && error.code !== 'PGRST116') throw error;
-  return !!data;
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error checking profile:', error);
+      throw error;
+    }
+    return !!data;
+  } catch (error) {
+    console.error('Profile check failed:', error);
+    throw error;
+  }
 } 
