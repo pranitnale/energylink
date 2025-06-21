@@ -9,9 +9,13 @@ import { Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { Profile } from '@/lib/types/profile';
+import { getRedirectURL } from '@/lib/config';
 
-// Define production URL
-const PRODUCTION_URL = 'https://www.pranitnale.com';
+// Define site URL based on environment
+const SITE_URL = 
+  window.location.hostname === 'localhost' 
+    ? 'http://localhost:5173'
+    : 'https://www.pranitnale.com';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
@@ -24,11 +28,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // Get the appropriate site URL based on environment
-      const isProduction = window.location.hostname !== 'localhost';
-      const siteURL = isProduction ? PRODUCTION_URL : window.location.origin;
-      const redirectTo = `${siteURL}/#/auth/callback`;
-
+      const redirectTo = getRedirectURL();
       console.log('Redirect URL:', redirectTo); // For debugging
 
       // Sign up the user with email confirmation

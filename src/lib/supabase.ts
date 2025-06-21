@@ -1,14 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
 import { Profile } from './types/profile';
+import { getRedirectURL } from './config';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Define site URL based on environment
+const SITE_URL = 
+  window.location.hostname === 'localhost' 
+    ? 'http://localhost:5173'
+    : 'https://www.pranitnale.com';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create Supabase client with auth configuration
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
 
 export const getProfile = async (userId: string) => {
   // First try to get the existing profile
