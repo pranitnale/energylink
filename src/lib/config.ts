@@ -7,13 +7,25 @@ export const API_CONFIG = {
 }; 
 
 // Site URLs and configuration
-export const APP_URL = 
-  window.location.hostname === 'localhost' 
-    ? 'http://localhost:5173'
-    : 'https://www.pranitnale.com';
+export const APP_URL = (() => {
+  if (window.location.hostname === 'localhost') {
+    // In development, use the current origin (includes port)
+    return window.location.origin;
+  }
+  return 'https://www.pranitnale.com';
+})();
 
 export const AUTH_CALLBACK_PATH = '/#/auth/callback';
 
 export const getRedirectURL = () => `${APP_URL}${AUTH_CALLBACK_PATH}`;
+
+// API URLs
+export const SYNERGY_API_URL = 
+  window.location.hostname === 'localhost'
+    ? `${window.location.origin}/api/synergy`  // Local development
+    : 'https://vowlfnpbffxzwvnippxt.supabase.co/functions/v1/quick-function';  // Production
+
+// Avatar configuration
+export const getAvatarURL = (userId: string) => `https://avatar.vercel.sh/${userId}.png`;
 
 // Other configuration constants can be added here 

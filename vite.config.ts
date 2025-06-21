@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       port: 8080,
       proxy: {
         '/api/synergy': {
-          target: 'https://vowlfnpbffxzwvnippxt.supabase.co/functions/v1/quick-function',
+          target: env.VITE_SYNERGY_API_URL || 'https://vowlfnpbffxzwvnippxt.supabase.co/functions/v1/quick-function',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/synergy/, ''),
           configure: (proxy, options) => {

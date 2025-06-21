@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { CircularProgress } from "@/components/CircularProgress";
 import { Progress } from "@/components/ui/progress";
 import { saveProfile, checkIfProfileSaved, deleteSavedProfile } from '@/lib/services/savedProfiles';
+import { getAvatarURL } from '@/lib/config';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -159,7 +160,7 @@ export default function ViewProfile() {
           <CardHeader className="pb-0">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={`https://avatar.vercel.sh/${profile.id}.png`} />
+                <AvatarImage src={getAvatarURL(profile.id)} />
                 <AvatarFallback className="text-2xl">
                   {profile.full_name?.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
