@@ -10,6 +10,9 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { Profile } from '@/lib/types/profile';
 
+// Define production URL
+const PRODUCTION_URL = 'https://www.pranitnale.com';
+
 export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,10 +24,12 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // Get the current site URL for redirection
-      const siteURL = window.location.origin;
-      // For hash router, we need to include the hash in the redirect
+      // Get the appropriate site URL based on environment
+      const isProduction = window.location.hostname !== 'localhost';
+      const siteURL = isProduction ? PRODUCTION_URL : window.location.origin;
       const redirectTo = `${siteURL}/#/auth/callback`;
+
+      console.log('Redirect URL:', redirectTo); // For debugging
 
       // Sign up the user with email confirmation
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
