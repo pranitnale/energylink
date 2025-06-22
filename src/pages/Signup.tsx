@@ -15,7 +15,7 @@ import { getRedirectURL } from '@/lib/config';
 const SITE_URL = 
   window.location.hostname === 'localhost' 
     ? 'http://localhost:5173'
-    : 'https://www.pranitnale.com';
+    : 'https://energylink-xi.vercel.app';
 
 export default function Signup() {
   const [email, setEmail] = useState('');

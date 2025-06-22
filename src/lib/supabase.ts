@@ -9,7 +9,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const SITE_URL = 
   window.location.hostname === 'localhost' 
     ? 'http://localhost:5173'
-    : 'https://www.pranitnale.com';
+    : 'https://energylink-xi.vercel.app';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');

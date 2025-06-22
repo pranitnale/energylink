@@ -12,7 +12,7 @@ export const APP_URL = (() => {
     // In development, use the current origin (includes port)
     return window.location.origin;
   }
-  return 'https://www.pranitnale.com';
+  return 'https://energylink-xi.vercel.app';
 })();
 
 export const AUTH_CALLBACK_PATH = '/#/auth/callback';
