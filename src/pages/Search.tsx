@@ -13,6 +13,7 @@ import { API_CONFIG } from '@/lib/config';
 import { CircularProgress } from '@/components/CircularProgress';
 import { saveProfile, checkIfProfileSaved, deleteSavedProfile, checkMultipleProfilesSaved } from '@/lib/services/savedProfiles';
 import { chatService } from '@/lib/chat-service';
+import { LoadingAnimation } from '@/components/LoadingAnimation';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -72,14 +73,15 @@ export default function Search() {
 
       if (error) throw error;
       setProfiles(data || []);
-      setSynergyScores({}); // Clear any existing scores
-      setCurrentQueryId(null); // Reset current query
+      setSynergyScores({});
+      setCurrentQueryId(null);
       localStorage.removeItem('profiles');
       localStorage.removeItem('synergyScores');
       localStorage.removeItem('currentQueryId');
     } catch (err) {
       console.error('Error fetching profiles:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch profiles');
+      toast.error('Unable to load profiles at the moment. Please try again later.');
+      setError('We encountered a temporary issue. Please refresh the page or try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -114,24 +116,28 @@ export default function Search() {
       }
     } catch (err) {
       console.error('Error fetching query matches:', err);
-      toast.error('Failed to fetch search results');
+      toast.error('We\'re having trouble processing your search results. Please try a different search phrase.');
     }
   };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      toast.error('Please enter a search query');
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
     setSynergyScores({});
 
     try {
-      // 1. Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      if (!user) {
+        toast.error('Please sign in to continue');
+        return;
+      }
 
-      // 2. Insert query into Supabase
       const { data: queryData, error: queryError } = await supabase
         .from('queries')
         .insert({
@@ -141,12 +147,10 @@ export default function Search() {
         })
         .select()
         .single();
-      if (queryError) throw queryError;
 
-      // Store query ID for later use
+      if (queryError) throw queryError;
       setCurrentQueryId(queryData.id);
 
-      // 3. Call synergy scoring API using environment-aware URL
       const response = await fetch(API_CONFIG.SYNERGY_API_URL, {
         method: 'POST',
         headers: { 
@@ -162,28 +166,41 @@ export default function Search() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData
-        });
-        throw new Error(errorData.error || `API Error: ${response.status} ${response.statusText}`);
+        throw new Error(`API_ERROR_${response.status}`);
       }
 
       const data = await response.json();
       if (!data.matches) {
-        throw new Error('Invalid response format from API');
+        throw new Error('INVALID_RESPONSE');
       }
 
-      // 4. Fetch the stored query matches
       await fetchQueryMatches(queryData.id);
-      toast.success('Search completed successfully');
+      toast.success('We found some great matches for you!');
     } catch (err) {
       console.error('Search error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Search failed';
-      setError(errorMessage);
-      toast.error(`Search failed: ${errorMessage}`);
+      let userMessage = 'We\'re having trouble processing your request.';
+      
+      if (err instanceof Error) {
+        switch (err.message) {
+          case 'API_ERROR_429':
+            userMessage = 'We\'re experiencing high demand. Please try again in a few moments.';
+            break;
+          case 'API_ERROR_401':
+          case 'API_ERROR_403':
+            userMessage = 'Your session has expired. Please refresh the page and try again.';
+            break;
+          case 'INVALID_RESPONSE':
+            userMessage = 'We couldn\'t understand the search results. Please try rephrasing your search.';
+            break;
+          default:
+            if (err.message.startsWith('API_ERROR_')) {
+              userMessage = 'Our search service is temporarily unavailable. Please try again later.';
+            }
+        }
+      }
+      
+      setError(userMessage);
+      toast.error(userMessage);
     } finally {
       setIsLoading(false);
     }
@@ -255,8 +272,18 @@ export default function Search() {
       return (
         <Card className="text-center py-8">
           <CardContent>
-            <p className="text-red-600">Error: {error}</p>
-            <Button onClick={fetchProfiles} className="mt-4">Retry</Button>
+            <div className="flex flex-col items-center space-y-4">
+              <div className="text-amber-600 bg-amber-50 p-4 rounded-full">
+                <SearchIcon className="w-8 h-8" />
+              </div>
+              <p className="text-gray-600 max-w-md mx-auto">{error}</p>
+              <Button 
+                onClick={fetchProfiles} 
+                className="mt-4 bg-green-600 hover:bg-green-700"
+              >
+                View All Partners
+              </Button>
+            </div>
           </CardContent>
         </Card>
       );
@@ -266,7 +293,9 @@ export default function Search() {
       return (
         <Card className="text-center py-8">
           <CardContent>
-            <p className="text-gray-600">Loading profiles...</p>
+            <LoadingAnimation 
+              message={currentQueryId ? "Finding your perfect matches..." : "Loading partners..."} 
+            />
           </CardContent>
         </Card>
       );
