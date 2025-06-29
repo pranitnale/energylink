@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { Database, SynergyScore as SynergyScoreType, QueryMatch } from '@/integrations/supabase/types';
 import { SynergyScore } from '@/components/SynergyScore';
 import { toast } from 'sonner';
-import { SynergyAPI } from '@/lib/services/synergyAPI';
+import { API_CONFIG } from '@/lib/config';
 import { CircularProgress } from '@/components/CircularProgress';
 import { saveProfile, checkIfProfileSaved, deleteSavedProfile, checkMultipleProfilesSaved } from '@/lib/services/savedProfiles';
 import { chatService } from '@/lib/chat-service';
@@ -87,41 +87,36 @@ export default function Search() {
     }
   };
 
-  // Fetch query matches from database and update UI
+  // Fetch query matches from database
   const fetchQueryMatches = async (queryId: string) => {
     try {
-      console.log('Fetching query matches for queryId:', queryId);
+      const { data, error } = await supabase
+        .from('query_matches')
+        .select('*')
+        .eq('query_id', queryId)
+        .single();
+
+      if (error) throw error;
       
-      const result = await SynergyAPI.getQueryMatches(queryId);
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to fetch query matches');
+      if (data) {
+        const matches = data.matches as SynergyScoreType[];
+        const scoresMap = matches.reduce((acc: Record<string, SynergyScoreType>, score: SynergyScoreType) => {
+          acc[score.candidate_id] = score;
+          return acc;
+        }, {});
+        setSynergyScores(scoresMap);
+
+        // Sort profiles by score
+        const sortedProfiles = [...profiles].sort((a, b) => {
+          const scoreA = scoresMap[a.id]?.score || 0;
+          const scoreB = scoresMap[b.id]?.score || 0;
+          return scoreB - scoreA;
+        });
+        setProfiles(sortedProfiles);
       }
-
-      const matches = result.data.matches as SynergyScoreType[];
-      console.log('Retrieved matches:', matches);
-
-      // Create scores map
-      const scoresMap = matches.reduce((acc: Record<string, SynergyScoreType>, score: SynergyScoreType) => {
-        acc[score.candidate_id] = score;
-        return acc;
-      }, {});
-      
-      setSynergyScores(scoresMap);
-
-      // Sort profiles by score (highest first)
-      const sortedProfiles = [...profiles].sort((a, b) => {
-        const scoreA = scoresMap[a.id]?.score || 0;
-        const scoreB = scoresMap[b.id]?.score || 0;
-        return scoreB - scoreA;
-      });
-      
-      setProfiles(sortedProfiles);
-      console.log('Updated profiles with synergy scores');
-      
     } catch (err) {
       console.error('Error fetching query matches:', err);
-      toast.error('We\'re having trouble loading your search results. Please try searching again.');
+      toast.error('We\'re having trouble processing your search results. Please try a different search phrase.');
     }
   };
 
@@ -137,38 +132,71 @@ export default function Search() {
     setSynergyScores({});
 
     try {
-      console.log('=== STARTING SEARCH ===');
-      console.log('Search query:', searchQuery);
-
-      // Call the synergy API
-      const result = await SynergyAPI.search(searchQuery);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Search failed');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please sign in to continue');
+        return;
       }
 
-      console.log('Search completed successfully');
-      console.log('Query ID:', result.queryId);
-      
-      // Set the current query ID
-      if (result.queryId) {
-        setCurrentQueryId(result.queryId);
-        
-        // Fetch and display the results
-        await fetchQueryMatches(result.queryId);
-        
-        toast.success('We found some great matches for you!');
-      } else {
-        throw new Error('No query ID returned from search');
+      const { data: queryData, error: queryError } = await supabase
+        .from('queries')
+        .insert({
+          user_id: user.id,
+          query_text: searchQuery,
+          structured_payload: { query: searchQuery },
+        })
+        .select()
+        .single();
+
+      if (queryError) throw queryError;
+      setCurrentQueryId(queryData.id);
+
+      const response = await fetch(API_CONFIG.SYNERGY_API_URL, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_CONFIG.SYNERGY_API_KEY}`
+        },
+        body: JSON.stringify({
+          queryId: queryData.id,
+          queryText: searchQuery,
+          structuredPayload: { query: searchQuery },
+          userId: user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API_ERROR_${response.status}`);
       }
 
+      const data = await response.json();
+      if (!data.matches) {
+        throw new Error('INVALID_RESPONSE');
+      }
+
+      await fetchQueryMatches(queryData.id);
+      toast.success('We found some great matches for you!');
     } catch (err) {
       console.error('Search error:', err);
-      
       let userMessage = 'We\'re having trouble processing your request.';
       
       if (err instanceof Error) {
-        userMessage = err.message;
+        switch (err.message) {
+          case 'API_ERROR_429':
+            userMessage = 'We\'re experiencing high demand. Please try again in a few moments.';
+            break;
+          case 'API_ERROR_401':
+          case 'API_ERROR_403':
+            userMessage = 'Your session has expired. Please refresh the page and try again.';
+            break;
+          case 'INVALID_RESPONSE':
+            userMessage = 'We couldn\'t understand the search results. Please try rephrasing your search.';
+            break;
+          default:
+            if (err.message.startsWith('API_ERROR_')) {
+              userMessage = 'Our search service is temporarily unavailable. Please try again later.';
+            }
+        }
       }
       
       setError(userMessage);
