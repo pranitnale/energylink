@@ -32,7 +32,7 @@ export default function Login() {
   }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // Prevent default form submission
     setLoading(true);
 
     try {
@@ -44,26 +44,26 @@ export default function Login() {
       if (error) throw error;
 
       if (user) {
-        const profileExists = await checkProfileExists(user.id);
+        const profileExists = await checkProfileExists(user.id); // TODO: Add check for profile existence from backend
         if (!profileExists) {
           // Create a basic profile if it doesn't exist
           await createProfile(user.id, {
-            full_name: user.email?.split('@')[0] || '',
+            full_name: user.email?.split('@')[0] || '', // TODO: Add full name from backend
             primary_role: [],
             intent: [],
-            tech_tags: [],
-            languages: ['English'],
+            tech_tags: [], // TODO: Add tech tags from backend
+            languages: ['English'], // TODO: Add languages from backend
             experience: '',
           });
         }
-        navigate('/profile');
+        navigate('/profile'); // TODO: Add redirect to profile page
       }
     } catch (error: any) {
       console.error('Error logging in:', error);
       if (error.message?.includes('Email not confirmed')) {
-        toast.error('Please verify your email before logging in.');
+        toast.error('Please verify your email before logging in.'); // TODO: Add error message from backend
       } else {
-        toast.error('Failed to log in. Please check your credentials.');
+        toast.error('Failed to log in. Please check your credentials.'); // TODO: Add error message from backend
       }
     } finally {
       setLoading(false);
