@@ -7,21 +7,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Zap, Mail, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { checkProfileExists, createProfile } from '@/lib/auth';
-import { toast } from 'sonner';
+import { checkProfileExists, createProfile } from '@/lib/auth';  // Import checkProfileExists and createProfile
+import { toast } from 'sonner'; // Import toast for notifications
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(''); // State for email input
+  const [password, setPassword] = useState(''); // State for password input
+  const [showPassword, setShowPassword] = useState(false); // State for password visibility
+  const [loading, setLoading] = useState(false); // State for loading state
+  const navigate = useNavigate(); // Use navigate to redirect
+  const [searchParams] = useSearchParams(); // Use searchParams to get URL parameters
 
   useEffect(() => {
     // Check for messages in URL params
-    const message = searchParams.get('message');
-    const error = searchParams.get('error');
+    const message = searchParams.get('message'); // Get message from URL params
+    const error = searchParams.get('error'); // Get error from URL params
 
     if (message) {
       toast.success(message);
