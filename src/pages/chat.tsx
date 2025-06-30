@@ -41,8 +41,8 @@ export default function ChatPage() {
   };
 
   const handleBackToList = () => {
-    setSelectedChatId(null);
-    setSelectedChat(null);
+    setSelectedChatId(null); // TODO: Add clear chat ID from backend
+    setSelectedChat(null); // TODO: Add clear chat ID from backend  
     setSearchParams({}); // TODO: Add clear chat ID from backend
   };
 
