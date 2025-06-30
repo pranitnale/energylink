@@ -14,7 +14,7 @@ export default function ChatPage() {
 
   // Check for chat ID in URL params (for direct links)
   useEffect(() => {
-    const chatId = searchParams.get('chat');
+    const chatId = searchParams.get('chat'); // TODO: Add chat ID from backend
     if (chatId) {
       setSelectedChatId(chatId);
       loadChatDetails(chatId);
@@ -23,14 +23,14 @@ export default function ChatPage() {
 
   const loadChatDetails = async (chatId: string) => {
     try {
-      const chats = await chatService.loadUserChats();
-      const chat = chats.find(c => c.id === chatId);
+      const chats = await chatService.loadUserChats(); // TODO: Add chat details from backend
+      const chat = chats.find(c => c.id === chatId); // TODO: Add chat details from backend
       if (chat) {
         setSelectedChat(chat);
       }
     } catch (error) {
       console.error('Error loading chat details:', error);
-      toast.error('Failed to load chat details');
+      toast.error('Failed to load chat details'); // TODO: Add error message from backend
     }
   };
 
@@ -43,7 +43,7 @@ export default function ChatPage() {
   const handleBackToList = () => {
     setSelectedChatId(null);
     setSelectedChat(null);
-    setSearchParams({});
+    setSearchParams({}); // TODO: Add clear chat ID from backend
   };
 
   return (
