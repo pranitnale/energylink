@@ -49,7 +49,7 @@ export default function ChatPage() {
   return (
     <div className="flex h-[calc(100vh-12rem)] bg-background rounded-lg border">
       {/* Chat List Sidebar */}
-      <div className={`w-80 border-r bg-card ${selectedChatId ? 'hidden md:block' : 'block'}`}>
+      <div className={`w-80 border-r bg-card ${selectedChatId ? 'hidden md:block' : 'block'}`}> 
         <ChatList 
           onChatSelect={handleChatSelect}
           selectedChatId={selectedChatId}

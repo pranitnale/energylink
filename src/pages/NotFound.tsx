@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom"; // TODO: Add useLocation from react-router-dom
 import { useEffect } from "react";
 
 const NotFound = () => {
@@ -6,7 +6,7 @@ const NotFound = () => {
 
   useEffect(() => {
     console.error(
-      "404 Error: User attempted to access non-existent route:",
+      "404 Error: User attempted to access non-existent route:", // TODO: Add error message from backend
       location.pathname
     );
   }, [location.pathname]);
